@@ -52,6 +52,11 @@
             </thead>
             <tbody></tbody>
         </table>
+
+        <!-- Pagination -->
+        <nav>
+            <ul id="pagination" class="pagination"></ul>
+        </nav>
     </div>
 
     <!-- Modal -->
@@ -69,6 +74,8 @@
 
     <script>
         let tableData = [];
+        let currentPage = 1;
+        let pageSize = 10; // default
 
         $(document).ready(function () {
             // Load accounts into dropdown
@@ -81,6 +88,12 @@
 
             // Search button
             $("#searchBtn").click(function () {
+                currentPage = 1;
+                loadPage();
+            });
+
+            // Load data with pagination
+            function loadPage() {
                 let accountId = $("#accountSelect").val();
                 let fromDate = $("#fromDate").val();
                 let toDate = $("#toDate").val();
@@ -90,31 +103,66 @@
                     return;
                 }
 
-                $.getJSON(`/api/Account/${accountId}/${fromDate}/${toDate}`, function (data) {
-                    tableData = data; // save for Excel export
+                $.getJSON(`/api/Account/${accountId}/${fromDate}/${toDate}?pageNumber=${currentPage}&pageSize=${pageSize}`, function (resp) {
+                    tableData = resp.data || [];
+                    let pagination = resp.pagination || {};
                     let tbody = $("#accountTable tbody");
                     tbody.empty();
 
-                    $.each(data, function (i, row) {
+                    $.each(tableData, function (i, row) {
                         tbody.append(`
-                            <tr>
-                                <td>${row.accountID}</td>
-                                <td>${row.accountName}</td>
-                                <td>${row.previousBalance}</td>
-                                <td>${row.debitAmount}</td>
-                                <td>${row.creditAmount}</td>
-                                <td>${row.finalBalance}</td>
-                                <td><button class="btn btn-sm btn-info view-transaction" data-id="${row.balanceHisId}">View</button></td>
-                            </tr>
-                        `);
+                <tr>
+                    <td>${row.accountID}</td>
+                    <td>${row.accountName}</td>
+                    <td>${row.previousBalance}</td>
+                    <td>${row.debitAmount}</td>
+                    <td>${row.creditAmount}</td>
+                    <td>${row.finalBalance}</td>
+                    <td><button class="btn btn-sm btn-info view-transaction" data-id="${row.balanceHisId}">View</button></td>
+                </tr>
+            `);
                     });
+
+                    renderPagination(pagination);
                 });
-            });
+            }
+
+
+            // Render pagination
+            function renderPagination(p) {
+                let ul = $("#pagination");
+                ul.empty();
+
+                if (!p.totalPages || p.totalPages <= 1) return;
+
+                // Prev
+                ul.append(`<li class="page-item ${p.pageNumber === 1 ? "disabled" : ""}">
+                    <a class="page-link" href="#">Prev</a></li>`);
+
+                // Pages
+                for (let i = 1; i <= p.totalPages; i++) {
+                    ul.append(`<li class="page-item ${i === p.pageNumber ? "active" : ""}">
+                        <a class="page-link" href="#">${i}</a></li>`);
+                }
+
+                // Next
+                ul.append(`<li class="page-item ${p.pageNumber === p.totalPages ? "disabled" : ""}">
+                    <a class="page-link" href="#">Next</a></li>`);
+
+                // Click events
+                ul.find("a").click(function (e) {
+                    e.preventDefault();
+                    let text = $(this).text();
+                    if (text === "Prev" && currentPage > 1) currentPage--;
+                    else if (text === "Next" && currentPage < p.totalPages) currentPage++;
+                    else if (!isNaN(text)) currentPage = parseInt(text);
+                    loadPage();
+                });
+            }
 
             // View transaction details
             $(document).on("click", ".view-transaction", function () {
                 let transactionId = $(this).data("id");
-
                 $.getJSON(`/api/Account/${transactionId}`, function (details) {
                     let html = `<pre>${JSON.stringify(details, null, 2)}</pre>`;
                     $("#transactionDetails").html(html);
@@ -129,7 +177,6 @@
                     alert("No data to print");
                     return;
                 }
-
                 let printWindow = window.open("", "", "width=800,height=600");
                 let html = "<table border='1'><tr><th>ID</th><th>Name</th><th>Prev</th><th>Debit</th><th>Credit</th><th>Final</th></tr>";
                 tableData.forEach(row => {
@@ -149,22 +196,16 @@
             });
 
             // Export to Excel
-            // Export to Excel
             $("#exportBtn").click(function () {
                 if (!tableData || tableData.length === 0) {
                     alert("No data to export");
                     return;
                 }
-
-                // Create workbook and worksheet
                 let ws = XLSX.utils.json_to_sheet(tableData);
                 let wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Account Statement");
-
-                // Download
                 XLSX.writeFile(wb, "AccountStatement.xlsx");
             });
-
         });
     </script>
 
