@@ -82,7 +82,7 @@
             $.getJSON("/api/Account", function (accounts) {
                 $("#accountSelect").append(`<option value="">-- Select Account --</option>`);
                 $.each(accounts, function (i, acc) {
-                    $("#accountSelect").append(`<option value="${acc.accountId}">${acc.accountName}</option>`);
+                    $("#accountSelect").append(`<option value="${acc.accountId}">${acc.accountId+' '+ acc.accountName}</option>`);
                 });
             });
 
