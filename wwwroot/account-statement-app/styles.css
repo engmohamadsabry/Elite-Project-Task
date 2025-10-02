@@ -1,0 +1,49 @@
+body {
+  background-color: #f7f9fb;
+}
+
+.stat-tile {
+  border: 1px solid #e9ecef;
+}
+
+.table tfoot th {
+  font-weight: 600;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(1px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1055;
+}
+
+.overlay .overlay-content {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 16px 20px;
+  min-width: 200px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+/* Print optimizations */
+@media print {
+  #app > .d-flex, .card-footer, #overlayLoading, .select2-container--default .select2-selection--single .select2-selection__arrow {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .card {
+    border: none;
+    box-shadow: none;
+  }
+  .stat-tile {
+    border: none;
+    background: #fff !important;
+  }
+}

@@ -3,6 +3,7 @@ using Elite_Project_Task.DTOs;
 using Elite_Project_Task.Helper;
 using Elite_Project_Task.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Threading.Tasks;
 
 namespace Elite_Project_Task.Services
@@ -10,10 +11,11 @@ namespace Elite_Project_Task.Services
     public class AccountServices : IAccountServices
     {
         private readonly AppDbContext _context;
-
-        public AccountServices(AppDbContext context)
+        private readonly IMemoryCache _cache;
+        public AccountServices(AppDbContext context, IMemoryCache cache)
         {
             _context = context;
+            _cache = cache;
         }
         public async Task<List<AccountListDTO>> GetAllAccounts()
         {            
@@ -33,9 +35,24 @@ namespace Elite_Project_Task.Services
                             select new { b, bh };
 
             // Count total before pagination
-            var totalRecords = await baseQuery.CountAsync();
+            // Only count on page 1, cache for others
+            int totalRecords;
+            var cacheKey = $"Count_{balanceId}_{fromDate:yyyyMMdd}_{toDate:yyyyMMdd}";
+
+            if (pageNumber == 1)
+            {
+                totalRecords = await baseQuery.CountAsync();
+                _cache.Set(cacheKey, totalRecords, TimeSpan.FromMinutes(5));
+            }
+            else
+            {
+                totalRecords = _cache.Get<int>(cacheKey);
+                if (totalRecords == 0)
+                    totalRecords = await baseQuery.CountAsync();
+            }
 
             var items = await baseQuery
+                .AsNoTracking()
                 .OrderBy(x => x.bh.Date) // must have stable ordering
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
